@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Ma La'asot - {{entityName}}</title>
+		<style>
+			/* form */
+			div {
+				margin: 5px 5px 5px 5px;
+			}
+			div.directions {
+				display: block;
+				text-align: right;
+				width: 500px;
+				font-style: italic;
+			}
+			label {
+				display: inline-block;
+				text-align: right;
+				width: 140px;
+			}
+
+			/* links */
+			a:link {color: Goldenrod}
+			a:visited {color: OliveDrab}
+			a:hover, a:active {color: PaleGoldenrod}
+
+			/* table */
+			.table {display:table; box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19)}
+			.row {display:table-row; margin: 0; padding: 0}
+			.cell {display:table-cell; margin: 0; padding: 0}
+
+			/* buttons */
+			.small.awesome {font-size:11px}
+			.green.awesome {background-color:OliveDrab}
+			a.green.awesome {color:PaleGoldenrod}
+			a.green.awesome:hover, a.green.awesome.active {color:LightGoldenrodYellow}
+			.gold.awesome {background-color:Goldenrod}
+			a.gold.awesome {color:LightGoldenrodYellow}
+			a.gold.awesome:hover, a.green.awesome.active {color:White}
+			.awesome{
+				background: #222 url(overlay.png) repeat-x;
+				display: inline-block;
+				padding: 5px 10px 6px;
+				color: #fff;
+				text-decoration: none;
+				font-weight: bold;
+				line-height: 1;
+				border-radius: 5px;
+				-moz-border-radius: 5px;
+				-webkit-border-radius: 5px;
+				box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+				-moz-box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+				-webkit-box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+				text-shadow: 0 -1px 1px rgba(0,0,0,0.25);
+				border-bottom: 1px solid rgba(0,0,0,0.25);
+				position: relative;
+				cursor: pointer;
+			}
+
+			/* faq */
+			.margin-lr-100 {margin: 0 100px 0 100px}
+			h2 {color:Goldenrod}
+			h3 {color:Gold}
+			h2, h3 {text-shadow: -1px 0 Grey, 0 1px Goldenrod, 1px 0 Goldenrod, 0 -1px Grey}
+		</style>
+	</head>
+	<body bgcolor="OliveDrab">
+
+		<br /><br />
+
+		<div class="table" style="margin:auto; width:80%; background-color:Cornsilk">
+			<div class="row" style="height:160px; overflow: hidden;">
+				<div class="cell" style="width:158px; height:160px; background-image:url('border-nw.gif')">
+					&nbsp;
+				</div>
+				<div class="cell" style="background-image:url('border-n.gif'); background-repeat: repeat-x; height: 160px">
+					&nbsp;
+				</div>
+				<div class="cell" style="width:158px; height:160px; background-image:url('border-ne.gif')">
+					&nbsp;
+				</div>
+			</div>
+			<div class="row">
+				<div class="cell" style="background-image:url('border-w.gif'); background-repeat:repeat-y; width:160px">
+					&nbsp;
+				</div>
+				<div class="cell">
+
+					<div style="text-align: center">
+						<br /><br />
+						<img src="ants.jpg" width="500" height="422" style="width:50%; height:inherit" />
+						<br /><br />
+						<img src="logo.gif" width="770" style="width: 85%" />
+						<br /><br />
+					</div>
+
+					<br /><br />
+
+					<div style="margin:auto; width:600px">
+						<form method="POST" action="?">
+							<fieldset>
+								<legend style="font-size: 1.8em;">{{entityName}}:</legend>
+								{{body}}
+								<br />
+							</fieldset>
+						</form>
+					</div>
+
+					<br />
+
+					<div style="text-align:center">
+						<a href="javascript:toggle('faq');">faq</a> | 
+						<a href="javascript:;" id="contact">contact</a>
+					</div>
+
+					<div style="display:none" class="margin-lr-100" id="faq">
+						<h2>FAQ</h2>
+						<h3>What is this?</h3>
+						<p>This is a site.</p>
+					</div>
+
+					<br />
+
+				</div>
+				<div class="cell" style="background-image:url('border-e.gif'); background-repeat:repeat-y; width:160px">
+					&nbsp;
+				</div>
+			</div>
+			<div class="row">
+				<div class="cell" style="width:160px">
+					<img src="border-sw.gif" width="160" height="160" />
+				</div>
+				<div class="cell" style="background-image:url('border-s.gif'); background-repeat: repeat-x">
+					&nbsp;
+				</div>
+				<div class="cell">
+					<img src="border-se.gif" width="160" height="160" />
+				</div>
+			</div>
+		</div>
+
+		<br /><br />
+
+		<script type="text/javascript">
+			let contact = (1785686126..toString(16) + 51073291744360..toString(16)).match(/.{1,2}/g).reduce((acc,char)=>acc+String.fromCharCode(parseInt(char, 16)),"") + '@' + 'malaasot' + '.' + 'com';
+			document.getElementById('contact').setAttribute('href', 'mai' + 'lto:' + contact);
+			function toggle(id) {
+				let elem = document.getElementById(id);
+				elem.setAttribute('style', 'display:' + (elem.getAttribute('style').indexOf('none') === -1 ? 'none' : 'block'));
+			}
+		</script>
+
+	</body>
+</html>
