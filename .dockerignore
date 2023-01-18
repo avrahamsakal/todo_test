@@ -1,0 +1,7 @@
+.idea
+.env
+.env.local
+.dockerignore
+Dockerfile
+Dockerfile-builder
+.gitignore

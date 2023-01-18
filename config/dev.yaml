@@ -1,0 +1,5 @@
+ballastSize: 0
+database:
+  driverName: mysql
+  dataSourceName: localhost:3306
+  keepAliveSeconds: 10
