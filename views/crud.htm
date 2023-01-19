@@ -3,7 +3,7 @@
 {{range .values}}
 <div>
     <label for="{{.key}}">{{.key}}:</label>
-    <input name="{{.key}}" type="text" placeholder="Example {{.key}}" value="{{.value}}" />
+    <input class="fields" name="{{.key}}" type="text" placeholder="Example {{.key}}" value="{{.value}}" />
 </div>
 {{end}}
 
@@ -12,32 +12,24 @@
 {{range .collections}}
 <h3>{{.entityName}}</h3>
 
-    {{range .values}}
+    {{range .fields}}
     <div>
         <label for="{{.key}}">{{.key}}:</label>
-        <input name="{{.key}}" type="text" placeholder="Example {{.key}}" value="{{.value}}" />
+        <input class="fields" name="{{.key}}" type="text" placeholder="Example {{.key}}" value="{{.value}}" />
+        &nbsp;<a class="delete awesome gold" href="#">Delete</a>
     </div>
     {{end}}
+    <!--
+        Normally there would be a div here for the blank row,
+        with an entityId of 0, but the controller gives us
+        a blank model to display here instead.
+    -->
 
 {{end}}
 
 <br />
 
-<script type="text/javascript">
-    $('input[type=text]').change(e => {
-        // Read key and value pair from form input
-        const [fullKey, v] = [$(e).attr('name'), $(e).val()];
-        const [entityName, ...args] = fullKey.replaceAll(']', '').split('[');
-        const [entityId, entity] = [args[1] || '', args[2] ? {k:v} : {}];
-        
-        // Post new value to the place it says it's from
-        $.post('/' + entityName + '/' + entityId, entity).success((data, textStatus, jqXHR) => {
-            // @TODO do something with data and ensure HTTP OK
-        }).fail((err) => {
-            // @TODO error handling
-        })
-    })
-</script>
+<script type="text/javascript" src="crud.js" />
 
 <!--<div>
     <label for="keywords">Search:</label>

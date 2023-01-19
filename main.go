@@ -18,8 +18,9 @@ import (
 	"github.com/jordan-borges-lark/todo_test/models"
 )
 
-//@TODO: Abstract out these setup sections into separate functions
-//  in this file called setupConfig(), setupSqlDB()
+// @TODO: Abstract out these setup sections into separate functions
+//
+//	in this file called setupConfig(), setupSqlDB()
 func main() {
 	/* === Config === */
 
@@ -72,6 +73,10 @@ func main() {
 	}
 	go keepalive(db)
 
+	/* === Load session store === */
+
+	sessionStore := sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
+	
 	/* === Cron jobs === */
 	{
 		cron := cron{}
@@ -108,7 +113,7 @@ func main() {
 		cc := cc.(controllers.CrudController)
 		cc.Database = db
 		cc.Config = cfg
-		cc.Session = &sessions.Session{}
+		cc.Session = sessionStore
 		cc.SetModel(&m)
 
 		entityName := m.GetTableName()

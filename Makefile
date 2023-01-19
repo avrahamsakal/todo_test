@@ -2,6 +2,7 @@ VET_REPORT=vet.report.txt
 TEST_REPORT=test.report.txt
 GOARCH=amd64
 GOOS?=darwin
+MYSQL_VER=1.6.2
 VERSION?=$(shell date '+%Y%m%d.%H%M%S')
 COMMIT=$(shell git rev-parse HEAD)
 BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
@@ -73,4 +74,5 @@ openapi:
 
 .PHONY: rundocker
 rundocker: build-image
+	docker run --name mysql -e MYSQL_ROOT_PASSWORD=test -d mysql:$(MYSQL_VER)
 	docker run --rm --name todo_test -p $(APP_PORT):$(APP_PORT) todo_test

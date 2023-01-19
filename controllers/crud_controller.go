@@ -29,7 +29,7 @@ type ICrudController interface { // implements IController
 }
 type CrudController struct {
 	Database *sqlx.DB
-	Session  *sessions.Session
+	Session  *sessions.Store
 	Model    *models.Model
 	Config   *config.Config
 }
@@ -147,11 +147,14 @@ func OutputHtml(w http.ResponseWriter, m *models.Model, viewName string) {
 	byt, _ := json.Marshal(m)
 	json.Unmarshal(byt, &fields)
 
-	// Migrate collection fields to a separate view value
-	collections := map[string]map[string]interface{}{}
+	// Migrate collection fields to a separate view value "collections"
+	collections := map[string][]map[string]interface{}{}
 	for k, v := range fields {
-		if v, isMap := v.(map[string]interface{}); isMap {
-			collections[k] = v
+		if array, isArray := v.([]map[string]interface{}); isArray {
+			// Add a model with ID "0" to each collection
+			// to create a blank row at the end (in the view)
+			collections[k] = append(array, map[string]interface{}{"id":0})
+			// Migrate value from "fields" to "collections"
 			delete(fields, k)
 		}
 	}
