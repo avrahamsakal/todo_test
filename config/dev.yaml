@@ -1,5 +1,5 @@
 ballastSize: 0
 database:
   driverName: mysql
-  dataSourceName: localhost:3306
+  dataSourceName: test:test@(localhost:3306)/todo_test
   keepAliveSeconds: 10
