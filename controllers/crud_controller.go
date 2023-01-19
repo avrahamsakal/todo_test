@@ -29,7 +29,7 @@ type ICrudController interface { // implements IController
 }
 type CrudController struct {
 	Database *sqlx.DB
-	Session  *sessions.Store
+	Session  *sessions.CookieStore // Temporary hack to get it to compile, this needs to be a generic session store
 	Model    *models.Model
 	Config   *config.Config
 }
