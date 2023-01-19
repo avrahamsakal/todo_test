@@ -1,0 +1,6 @@
+dependencies:
+- name: istio-endpoint
+  repository: oci://505063636372.dkr.ecr.us-east-1.amazonaws.com
+  version: 0.0.9
+digest: sha256:3cbeb0438a5f90f54496e055e08e92d51c2fd5d3f24d5b20cb448154f54a08f5
+generated: "2021-05-07T15:23:56.884384373-07:00"

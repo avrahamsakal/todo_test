@@ -1,0 +1,25 @@
+{{- if .Values.global.prometheusoperator.installed -}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app: {{ include "todo_test.name" . }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ include "todo_test.name" . }}
+    helm.sh/chart: {{ include "todo_test.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  name: {{ include "todo_test.name" . }}
+spec:
+  endpoints:
+  - interval: 30s
+    path: /metrics
+    port: manage
+  jobLabel: {{ include "todo_test.name" . }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "todo_test.name" . }}
+{{- end }}

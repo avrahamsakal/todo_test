@@ -1,0 +1,129 @@
+### todo_test microservice
+replicaCount: 1
+
+command: [ /opt/malaasot/bin/startclustered.sh ]
+
+image:
+  repository: 505063636372.dkr.ecr.us-east-1.amazonaws.com/todo_test
+  tag: 8.45.2 # release tag todo_test
+  pullPolicy: Always
+
+pushNotifications:
+  enabled: true
+
+extraUserUuid: ""
+
+env:
+ # Running Settings
+  JDBC_MAX_POOL_SIZE: 40
+  JDBC_MIN_POOL_SIZE: 10
+  JAVA_OPTS: "-Djava.net.preferIPv4Stack=true -Djboss.as.management.blocking.timeout=1200 -Dfile.encoding=UTF-8 -ea -XX:+UseG1GC -XX:MaxGCPauseMillis=1500 -Xmx3096m -Xms3096m -Dlog4j.configurationFile=/opt/malaasot/log4j-config/log4j2.xml -XX:-OmitStackTraceInFastThrow -Djava.security.networkaddress.cache.ttl=60 -Dnashorn.args=--optimistic-types=false -Dhttps.protocols=TLSv1,TLSv1.1,TLSv1.2"
+  THREAD_POOL_COUNT: 10
+  NUM_JS_ENGINES: 2
+  DISABLE_RETRY_INTERCEPTOR: 0
+  ENABLE_SEGMENT_EVENTS: 1
+  TODOTEST_NUM_REFERRAL_API_THREADS: 5
+  TODOTEST_NUM_TRIGGER_THREADS: 5
+  TODOTEST_PROD: false
+  TODOTEST_SERVER_TYPE: prod
+  TODOTEST_REFERRAL_API_THROTTLE_DELAY: 0
+  INITIAL_CONTEXT_POOL_CAPACITY: 1
+  LOGIC_EVAL_TRACKING: false
+  LOG_LEVEL: INFO
+  LOG_LONG_EVENTS: "True"
+  TODOTEST_SERVER_NAME_PREFIX: dev
+  SEGMENT_WRITE_KEY: bloop
+  SHOULD_USE_USER_UUID_PREFIX: false
+  SSL_KEYSTORE_PASSWORD: zig
+  SSL_KEY_PASSWORD: zag
+  JAEGER_REPORTER_LOG_SPANS: false
+  JAEGER_SAMPLER_TYPE: const
+  JAEGER_SAMPLER_PARAM: 1
+  JAEGER_SERVICE_NAME: todo_test
+  JAEGER_AGENT_HOST: tracing-jaeger-agent.jaeger
+  JAEGER_AGENT_PORT: "6831"
+
+global:
+  node:
+    env: ""
+  pullSecrets: []
+  hosts:
+    domain: example.com
+    centralizedlogin: {}
+    todo_test: {}
+  mysql:
+    replication:
+      enabled: false
+      host: ""
+    password: {}
+
+healthCheck:
+  enabled: true
+  alive:
+    port: http
+    path: /
+    initialDelaySeconds: 200
+    periodSeconds: 12
+    failureThreshold: 5
+  ready:
+    port: http
+    path: /todo_test
+    initialDelaySeconds: 40
+    periodSeconds: 3
+    failureThreshold: 3
+
+service:
+  type: ClusterIP
+  port: 80
+  managePort: 9990
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: nginx # ingress-nginx is what fulfills the stipulation of there being a L7 LB
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: 8m
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+  vanity:
+    enabled: false
+    hostname: todo_test.malaasot.com
+
+ingressinternal:
+  enabled: false
+  annotations:
+    kubernetes.io/ingress.class: nginx-internal
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: 8m
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+  vanity:
+    enabled: false
+    hostname: todo_test-internal.malaasot.com
+
+dnsConfig:
+  options:
+  - name: use-vc
+  - name: single-request-reopen
+
+
+resources:
+  requests:
+    cpu: 1000m
+    memory: 4Gi
+
+notificationJavaOpts: ""
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

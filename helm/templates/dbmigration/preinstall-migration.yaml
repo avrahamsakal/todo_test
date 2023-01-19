@@ -1,0 +1,81 @@
+{{- if .Values.migration.enabled -}}
+{{- $root := . -}}
+{{- $name := include "malaasot.name" . -}}
+{{- $fullName := include "malaasot.fullname" . -}}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "malaasot.fullname" . }}-migration
+  labels:
+    app: {{ include "malaasot.name" . }}-migration
+    release: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ include "malaasot.name" . }}
+    helm.sh/chart: {{ include "malaasot.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  template:
+    metadata:
+      name: "{{.Release.Name}}"
+      annotations:
+        sidecar.istio.io/inject: "false" # Never inject Istio sidecar
+      labels:
+        app: {{ include "malaasot.name" . }}-migration
+        release: {{ .Release.Name }}
+        app.kubernetes.io/name: {{ include "malaasot.name" . }}
+        helm.sh/chart: {{ include "malaasot.chart" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+    spec:
+      restartPolicy: Never
+{{- include "malaasot.pullSecrets" . | indent 6 }}
+      initContainers:
+      - name: stg-container
+        image: "{{ .Values.settingsTemplateGenerator.image.repository }}:{{ .Values.settingsTemplateGenerator.image.tag }}"
+        imagePullPolicy: {{ .Values.settingsTemplateGenerator.image.pullPolicy }}
+        command: ["/bin/cp"]
+        args: ["-Rv", "/opt/malaasot/", "/settingsTemplateGenerator"]
+        volumeMounts:
+         - name: stg-volume
+           mountPath: /settingsTemplateGenerator
+
+      containers:
+      - name: migration-util
+        image: "{{ .Values.migration.image.repository }}:{{ .Values.migration.image.tag }}"
+        imagePullPolicy: {{ .Values.migration.image.pullPolicy }}
+        env:
+        - name: RELEASE_NAME
+          value: {{ .Release.Name }}
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-backup
+              key: accessKey
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-backup
+              key: secretAccessKey
+        - name: TODOTEST_URL
+          value: "http://{{ template "malaasot.todo_test.serviceName" . }}/todo_test"
+        - name: MYSQL_DB_HOST
+          value: "{{ template "malaasot.mysql.host" . }}"
+        - name: MYSQL_DB_PORT
+          value: "{{ template "malaasot.mysql.port" . }}"
+        - name: MYSQL_DB_USER
+          value: "{{ template "malaasot.mysql.mysqlUser" . }}"
+        - name: MYSQL_DB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "malaasot.mysql.password.secret" . }}
+              key: {{ template "malaasot.mysql.password.key" . }}
+        - name: MYSQL_TODOTEST_DB
+          value: "{{ template "malaasot.mysql.mysqlDatabase" . }}"
+        - name: TODOTEST_MIGRATION_TABLE_NAME
+          value: "{{ template "malaasot.todo_test.table" . }}"
+{{- end }}

@@ -1,0 +1,8 @@
+global:
+  mysql:
+    <<: *mysql
+  hosts:
+    domain: qa-lab.malaasot.com
+
+mysql: &mysql
+  mysqlPassword: labPassword

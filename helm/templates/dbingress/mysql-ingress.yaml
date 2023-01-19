@@ -1,0 +1,30 @@
+{{- if .Values.mysql.ingress.enabled -}}
+{{- $fullName := include "mysql.fullname" . -}}
+{{- $hostname := include "malaasot.mysql.tcp.hostname" . -}}
+---
+apiVersion: voyager.appscode.com/v1beta1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    app.kubernetes.io/name: {{ include "malaasot.name" . }}
+    helm.sh/chart: {{ include "malaasot.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+     ingress.appscode.com/annotations-service: |
+         {
+           "external-dns.alpha.kubernetes.io/voyager" : "externalDns",
+           "external-dns.alpha.kubernetes.io/hostname" : {{ $hostname | quote }}
+         }
+spec:
+  rules:
+  - host: {{ $hostname }}
+    tcp:
+      port: 3306
+      backend:
+        serviceName: {{ $fullName }}
+        servicePort: mysql
+  loadBalancerSourceRanges:
+  - {{ .Values.mysql.ingress.vpnCidr }}
+{{- end }}

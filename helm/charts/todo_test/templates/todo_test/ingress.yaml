@@ -1,0 +1,42 @@
+{{- if .Values.ingress.enabled -}}
+{{- $fullName := include "todo_test.fullname" . -}}
+{{- $hostname := include "todo_test.hostname" . -}}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    app.kubernetes.io/name: {{ include "todo_test.name" . }}
+    helm.sh/chart: {{ include "todo_test.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  tls:
+    - hosts:
+        - {{ $hostname }}
+  {{- if .Values.ingress.vanity.enabled }}
+        - {{ .Values.ingress.vanity.hostname }}
+  {{- end }}
+      secretName: {{ include "malaasot.wildcard.secret" . }}
+  rules:
+    - host: {{ $hostname }}
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: {{ $fullName }}
+              servicePort: http
+  {{- if .Values.ingress.vanity.enabled }}
+    - host: {{ .Values.ingress.vanity.hostname }}
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: {{ $fullName }}
+              servicePort: http
+  {{- end }}
+{{- end }}

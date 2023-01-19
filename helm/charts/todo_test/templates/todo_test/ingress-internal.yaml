@@ -1,0 +1,44 @@
+{{- if .Values.ingressinternal.enabled -}}
+{{- $fullName := include "todo_test.fullname" . -}}
+{{- $hostname := include "todo_test.hostname" . | replace "todo_test" "todo_test-internal" -}}
+{{- $ingressName := printf "%s-internal" $fullName }}
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: {{ $ingressName }}
+  labels:
+    app.kubernetes.io/name: {{ include "todo_test.name" . }}
+    helm.sh/chart: {{ include "todo_test.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  {{- with .Values.ingressinternal.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  tls:
+    - hosts:
+        - {{ $hostname }}
+  {{- if .Values.ingressinternal.vanity.enabled }}
+        - {{ .Values.ingressinternal.vanity.hostname }}
+  {{- end }}
+      secretName: {{ include "malaasot.wildcard.secret" . }}
+  rules:
+    - host: {{ $hostname }}
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: {{ $fullName }}
+              servicePort: http
+  {{- if .Values.ingressinternal.vanity.enabled }}
+    - host: {{ .Values.ingressinternal.vanity.hostname }}
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: {{ $fullName }}
+              servicePort: http
+  {{- end }}
+{{- end }}

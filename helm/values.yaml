@@ -1,0 +1,94 @@
+# Helm Chart
+# If you just want to change some versions, override the following--
+#servicename:
+  #image:
+    #repository
+    #tag:
+todo_test:
+  enabled: true
+mysqlutil:
+  enabled: false
+
+migration:
+  enabled: true
+  restartPolicy: Never
+  env:
+    S3_BUCKET_URI: "s3://todo_test"
+    AWS_DEFAULT_REGION: "us-east-1"
+    JWT: "fakeJwt"
+    ENABLE_ANONYMIZE: 'false'
+  image:
+    repository: 505063636372.dkr.ecr.us-east-1.amazonaws.com/todo_test-migrations
+    tag: 8.45.0 # release tag migration
+    pullPolicy: Always
+  resources: {}
+  affinity: {}
+
+backup:
+  # s3:
+  #   accessKey:
+  #   secretAccessKey:
+  mysql:
+    promotion:
+      enabled: false
+    full:
+      enabled: false
+
+global:
+  node:
+    env: dev
+  ## doc/charts/globals.md#configure-mysql-settings
+  hosts:
+    wildcardSecret: wildcard-malaasot-com
+    domain: qa-lab.malaasot.com
+    todo_test: {}
+    mysql: {}
+  istio:
+    enabled: false
+  mysql:
+    password: {}
+    mysqlPassword: test
+    mysqlDatabase: todo_test
+
+## Installation & configuration of stable/mysql
+## See requirements.yaml for current version
+mysql:
+  ingress:
+    vpnCidr: 3.219.24.201/32
+    enabled: false
+  image: mysql
+  imageTag: 1.6.2
+  imagePullPolicy: Always
+  install: true
+  mysqlUser: test
+  mysqlPassword: test
+  mysqlRootPassword: test
+  mysqlDatabase: todo_test
+  metrics:
+    enabled: true
+    serivceMonitor:
+      enabled: false
+  #persistence:
+    #annotations:
+      #helm.sh/resource-policy: keep # uncomment this if you wanna keep your data
+  configurationFiles:
+    mysql_conns.cnf: |-
+      [mysqld]
+      max_connections = 1000
+      group_concat_max_len = 18446744073709547520
+      max_allowed_packet = 1073741824
+  resources:
+    requests:
+      cpu: 50m
+      memory: 1Gi
+
+
+todo_test-endpoint:
+  fullnameOverride: todo_test-main
+  auth:
+    public: true
+  ingress:
+    hosts:
+      - todo_test.malaasot.com
+  destination:
+    host: todo_test-todo_test

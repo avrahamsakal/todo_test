@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "todo_test.fullname" . }}
+  labels:
+    app: {{ include "todo_test.name" . }}
+    release: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ include "todo_test.name" . }}
+    helm.sh/chart: {{ include "todo_test.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    todo_test: notify
+    editor: "true"
+spec:
+  replicas: 1
+  serviceName: {{ include "todo_test.name" . }}
+  selector:
+    matchLabels:
+      app: {{ include "todo_test.name" . }}
+      release: {{ .Release.Name }}
+      app.kubernetes.io/name: {{ include "todo_test.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      todo_test: notify
+      editor: "true"
+  template:
+    metadata:
+      labels:
+        app: {{ include "todo_test.name" . }}
+        release: {{ .Release.Name }}
+        app.kubernetes.io/name: {{ include "todo_test.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        todo_test: notify
+        editor: "true"
+      annotations:
+        prometheus.io/path: /metrics
+        prometheus.io/port: '9990'
+        prometheus.io/scrape: 'true'
+    spec:
+{{- include "malaasot.pullSecrets" . | indent 6 }}
+      {{- with .Values.dnsConfig }}
+      dnsConfig:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: {{ .Values.command }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: manage
+              containerPort: 9990
+              protocol: TCP
+          {{- if .Values.healthCheck.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.healthCheck.alive.path }}
+              port: {{ .Values.healthCheck.ready.port }}
+            initialDelaySeconds: {{ .Values.healthCheck.alive.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthCheck.alive.periodSeconds }}
+            failureThreshold: {{ .Values.healthCheck.alive.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.healthCheck.ready.path }}
+              port: {{ .Values.healthCheck.ready.port }}
+            initialDelaySeconds: {{ .Values.healthCheck.ready.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthCheck.ready.periodSeconds }}
+            failureThreshold: {{ .Values.healthCheck.ready.failureThreshold }}
+          {{- end }}
+          env:
+          - name: TODOTEST_URL
+            value: "http://{{ template "malaasot.todo_test.serviceName" . }}/todo_test"
+          - name: TODOTEST_NOTIFY_URL
+            value: "http://{{ template "malaasot.todo_test.notifyServiceName" . }}/todo_test"
+          {{- if .Values.global.mysql.replication.enabled }}
+          - name: SQL_CONNECTION_URL
+            value: "mysql:replication://{{ template "malaasot.mysql.host" . }}:{{ template "malaasot.mysql.port" . }},{{ template "malaasot.mysql.replicaHost" . }}:{{ template "malaasot.mysql.port" . }}/{{ template "malaasot.mysql.mysqlDatabase" . }}?autoReconnect=true&useUnicode=true&characterEncoding=UTF-8"
+          {{ else }}
+          - name: SQL_CONNECTION_URL
+            value: "mysql://{{ template "malaasot.mysql.host" . }}:{{ template "malaasot.mysql.port" . }}/{{ template "malaasot.mysql.mysqlDatabase" . }}?autoReconnect=true&useUnicode=true&characterEncoding=UTF-8"
+          {{- end }}
+          - name: SQL_USERNAME
+            value: "{{ template "malaasot.mysql.mysqlUser" . }}"
+          - name: SQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "malaasot.mysql.password.secret" . }}
+                key: {{ template "malaasot.mysql.password.key" . }}
+          - name: TODOTEST_ENABLE_PUSH_JOB
+          {{- if (.Values.pushNotifications.enabled) }}
+            value: "1"
+          {{- else }}
+            value: "0"
+          {{- end }}
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
