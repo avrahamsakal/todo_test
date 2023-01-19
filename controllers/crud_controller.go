@@ -12,6 +12,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/jordan-borges-lark/todo_test/config"
 	"github.com/jordan-borges-lark/todo_test/models"
+	"github.com/jordan-borges-lark/todo_test/views"
 )
 
 // Not an entity
@@ -46,7 +47,16 @@ func (cc *CrudController) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cc *CrudController) Read(w http.ResponseWriter, r *http.Request) {
-	OutputJson(w, cc.ReadBase(w, r))
+	m := cc.ReadBase(w, r)
+	// JSON
+	if r.Header.Get("Content-Type") == "application/json" {
+		OutputJson(w, m)
+		return
+	}
+	// @TODO: XML can by done just by replacing json.Marshal with xml.Marshal
+
+	// HTML
+	OutputHtml(w, m, "crud")
 }
 func (cc *CrudController) ReadBase(w http.ResponseWriter, r *http.Request) *models.Model {
 	if m, err := cc.GetModelByIdFromRequest(r); err != nil { // Auth
@@ -127,6 +137,36 @@ func OutputJson(w http.ResponseWriter, value interface{}) {
 		w.Header().Add("Content-Type", "application/json")
 		w.Write(byt)
 	}
+}
+
+func OutputHtml(w http.ResponseWriter, m *models.Model, viewName string) {
+	//fields := models.GetDBFields(m)
+
+	// This is called a marshal-unmarshal cycle; needed to convert struct => map[string]iface{}
+	var fields map[string]interface{}
+	byt, _ := json.Marshal(m)
+	json.Unmarshal(byt, &fields)
+
+	// Migrate collection fields to a separate view value
+	collections := map[string]map[string]interface{}{}
+	for k, v := range fields {
+		if v, isMap := v.(map[string]interface{}); isMap {
+			collections[k] = v
+			delete(fields, k)
+		}
+	}
+
+	values := map[string]interface{}{
+		"name": m.GetTableName(),
+		"fields": fields,
+		"collections": collections,
+	}
+	body, err := views.GetView(viewName, "", values)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write([]byte(body))
 }
 
 type HttpError struct {

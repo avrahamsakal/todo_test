@@ -7,13 +7,16 @@ import (
 )
 
 type Config struct {
-	// Metadata
+	// Config struct metadata
+	
 	Environment string
 
-	// Config values
-	BallastSize int64 //`yaml:"ballastSize"` // This annotation should be unnecessary
+	// Config fields
 	
+	BallastSize int64 //`yaml:"ballastSize"` // This annotation should be unnecessary
+
 	// Config collections
+	
 	Database Database
 }
 type Database struct {

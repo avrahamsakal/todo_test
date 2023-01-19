@@ -2,16 +2,16 @@
 
 ## Setup
 
-To install Go on a Mac, run the following in the terminal. Project uses go version >= 1.19
+To install Go on a Mac, run the following in the terminal. (Project uses Go version >= 1.19)
 ~~~
 brew install go
 ~~~
 then run
 ~~~
-make build
+make godownload gotidy build
 ~~~
 
-Make sure to update your environment with the values in .env.example (not really necessary, but ostensibly it would be necessary for a dev to copy .env.example to .env so server can load env var overrides)
+Ostensibly it would be necessary for a dev to copy .env.example to .env so server can load env var overrides, but it's currently not
 
 ## Running
 

@@ -16,10 +16,10 @@ type IModel interface {
 	SetId(int) IModel
 	CanUserRead(int) bool
 	CanUserWrite(int) bool
-	Load(db *sqlx.DB) (IModel, error)
+	Load(db *sqlx.DB) (IModel, error) // @TODO: Add "lazy bool" as an optional argument defaulted to true. Propagating .Load()s has a problem of circular dependencies and loading (potentially massive) collections vs. objects, but we could get away with it in this application if we wanted to
 }
 type Model struct {
-	Id        int        `db:"id"`
+	Id        int        `db:"id"` // @TODO: Make this *int
 	CreatedAt *time.Time `db:"created_at"`
 	UpdatedAt *time.Time `db:"updated_at"`
 	DeletedAt *time.Time `db:"deleted_at"`
@@ -55,8 +55,10 @@ func Count[M IModel](db *sqlx.DB, id int) (*M, error) {
 	return &m, nil
 }
 
+// Update is really Upsert, due to time constraints and project req's
+// @TODO add parameter "upsert bool" default to false
 func Update[M IModel](db *sqlx.DB, m M) (sql.Result, error) {
-	fields := getDBFields(m)            // e.g. []string{"id", "snake_case"}
+	fields := GetDBFields(m)            // e.g. []string{"id", "snake_case"}
 	csv := strings.Join(fields, ", ")   // e.g. "id, name, description"
 	csvc := strings.Join(fields, ", :") // e.g. ":id, :name, :description"
 	sql := "INSERT IGNORE INTO " + m.GetTableName() +
@@ -64,9 +66,9 @@ func Update[M IModel](db *sqlx.DB, m M) (sql.Result, error) {
 	return sqlx.NamedExec(db, sql, m)
 }
 
-// getDBFields reflects on a struct and returns the values of fields with `db` tags,
+// GetDBFields reflects on a struct and returns the values of fields with `db` tags,
 // or a map[string]interface{} and returns the keys.
-func getDBFields(value interface{}) []string {
+func GetDBFields(value interface{}) []string {
 	v := reflect.ValueOf(value)
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()

@@ -13,10 +13,13 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/jordan-borges-lark/todo_test/config"
 	"github.com/jordan-borges-lark/todo_test/controllers"
+	"github.com/jordan-borges-lark/todo_test/datastores"
 	"github.com/jordan-borges-lark/todo_test/helpers"
 	"github.com/jordan-borges-lark/todo_test/models"
 )
 
+//@TODO: Abstract out these setup sections into separate functions
+//  in this file called setupConfig(), setupSqlDB()
 func main() {
 	/* === Config === */
 
@@ -44,13 +47,13 @@ func main() {
 	// Create a large heap allocation; 30 means 10 GiB
 	ballast := make([]byte, 10<<cfg.BallastSize)
 	go func(b []byte) {
-		select {}
+		select {} // Blocks forever to keep GC from collecting ballast
 	}(ballast)
 
 	/* === SQL === */
 
 	// Create DB connection
-	db := GetDB(
+	db := datastores.GetSqlDB(
 		cfg.Database.DriverName,
 		cfg.Database.DataSourceName,
 	)
@@ -96,7 +99,7 @@ func main() {
 	}
 
 	for m, cc := range map[interface{}]interface{}{
-		models.User{}:         controllers.User{}, // With reflection you wouldn't even need to wire this up
+		models.User{}:         controllers.User{}, // @TODO: With reflection you wouldn't even need to wire this up
 		models.ItemList{}:     controllers.ItemList{},
 		models.ItemListItem{}: controllers.ItemListItem{},
 	} {
@@ -114,18 +117,18 @@ func main() {
 		}
 
 		// Add routes for each CRUD operation
-		for path, handlers := range map[string]map[string]func(w http.ResponseWriter, r *http.Request) {
-			"/"+helpers.Pluralize(entityName): {
+		for path, handlers := range map[string]map[string]func(w http.ResponseWriter, r *http.Request){
+			"/" + helpers.Pluralize(entityName): {
 				//"GET": cc.Index, // Not req'd for this project
-			}, "/"+entityName: {
+			}, "/" + entityName: {
 				"POST": cc.Create,
-			}, "/"+entityName+"/{id}": {
-				"GET": cc.Read,
-				"PATCH": cc.Update,
-				"PUT": cc.Update,
+			}, "/" + entityName + "/{id}": {
+				"GET":    cc.Read,
+				"PATCH":  cc.Update,
+				"PUT":    cc.Update,
 				"DELETE": cc.Delete,
 			},
-		}{
+		} {
 			for method, handler := range handlers {
 				r.HandleFunc(path, handler).Methods(method)
 			}
@@ -133,7 +136,7 @@ func main() {
 	}
 
 	// @TODO: Add middleware
-	//mux.Use(authMiddleware)
+	//mux.Use(authMiddleware) // Auths user for read/write action on model requested
 	//mux.Use(jsonMiddleware)
 
 	fmt.Println("Running on port", os.Getenv("APP_PORT"))

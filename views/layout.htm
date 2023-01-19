@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<title>Ma La'asot - {{entityName}}</title>
+		<title>Ma La'asot - {{.entityName}}</title>
 		<style>
 			/* form */
 			div {
@@ -100,7 +100,7 @@
 						<form method="POST" action="?">
 							<fieldset>
 								<legend style="font-size: 1.8em;">{{entityName}}:</legend>
-								{{body}}
+								{{.body}}
 								<br />
 							</fieldset>
 						</form>
@@ -142,12 +142,9 @@
 		<br /><br />
 
 		<script type="text/javascript">
+			// Obfuscate contact email to fool email crawlers running headless Chrome (i.e. with a JS VM)
 			let contact = (1785686126..toString(16) + 51073291744360..toString(16)).match(/.{1,2}/g).reduce((acc,char)=>acc+String.fromCharCode(parseInt(char, 16)),"") + '@' + 'malaasot' + '.' + 'com';
-			document.getElementById('contact').setAttribute('href', 'mai' + 'lto:' + contact);
-			function toggle(id) {
-				let elem = document.getElementById(id);
-				elem.setAttribute('style', 'display:' + (elem.getAttribute('style').indexOf('none') === -1 ? 'none' : 'block'));
-			}
+			$('#contact').attr('href', 'mai' + 'lto:' + contact);
 		</script>
 
 	</body>

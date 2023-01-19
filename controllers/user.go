@@ -1,26 +1,19 @@
 package controllers
 
-import (
-	//"encoding/json"
-	"net/http"
-	//"strconv"
-
-	//"github.com/gorilla/mux"
-	//"github.com/jordan-borges-lark/todo_test/models"
-	//"github.com/gorilla/mux"
-)
-
 type User struct { // implements ICrudController
 	CrudController
 }
 
+
+
+
+
 /*func (u *User) Create(w http.ResponseWriter, r *http.Request) {
 	// @TODO add to r.Context to tell Update this is a create operation
 	u.Update(w, r) // Create must be called without ID, or with nil/zero ID
-}*/
+}
 
 func (u *User) Read(w http.ResponseWriter, r *http.Request) {
-	
 	if r.Header.Get("Content-Type") == "application/json" {
 		u.CrudController.Read(w, r)
 		return
@@ -36,9 +29,9 @@ func (u *User) Update(w http.ResponseWriter, r *http.Request) {
 	/*if u.Model.Id != session.getLoggedInUserId() {
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
-	}*/
+	}*//*
 	u.CrudController.Update(w, r)
-}
+}*/
 
 // Different ways to grab user
 //vars := mux.Vars(r)

@@ -1,4 +1,45 @@
+<h2>{{.entityName}}</h2>
+
+{{range .values}}
 <div>
+    <label for="{{.key}}">{{.key}}:</label>
+    <input name="{{.key}}" type="text" placeholder="Example {{.key}}" value="{{.value}}" />
+</div>
+{{end}}
+
+<br />
+
+{{range .collections}}
+<h3>{{.entityName}}</h3>
+
+    {{range .values}}
+    <div>
+        <label for="{{.key}}">{{.key}}:</label>
+        <input name="{{.key}}" type="text" placeholder="Example {{.key}}" value="{{.value}}" />
+    </div>
+    {{end}}
+
+{{end}}
+
+<br />
+
+<script type="text/javascript">
+    $('input[type=text]').change(e => {
+        // Read key and value pair from form input
+        const [fullKey, v] = [$(e).attr('name'), $(e).val()];
+        const [entityName, ...args] = fullKey.replaceAll(']', '').split('[');
+        const [entityId, entity] = [args[1] || '', args[2] ? {k:v} : {}];
+        
+        // Post new value to the place it says it's from
+        $.post('/' + entityName + '/' + entityId, entity).success((data, textStatus, jqXHR) => {
+            // @TODO do something with data and ensure HTTP OK
+        }).fail((err) => {
+            // @TODO error handling
+        })
+    })
+</script>
+
+<!--<div>
     <label for="keywords">Search:</label>
     <input name="keywords" type="text" placeholder="Example search" value="Example search" />
 </div>
@@ -47,16 +88,16 @@
 <div class="directions">
     Options:
     <a class="awesome green" id="previewLink" href="#" onclick="preview();">Preview</a><br />
-</div>
+</div>-->
 <div class="directions">
     <a class="awesome green" href="javascript:;" onclick="document.forms[0].submit(); return false;">Submit</a>
 </div>
-<div class="directions">
+<!--<div class="directions">
     <label for="email">Email:</label>
     <input name="email" id="email" type="text" placeholder="email@mailinator.com" />
     &nbsp;
     <a class="awesome green" id="emailLink" href="#" onclick="return false;">Get email alerts</a>
-</div>
+</div>-->
 
 <br />
 
