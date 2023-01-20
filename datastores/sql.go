@@ -12,14 +12,14 @@ const migrationDirName = "./datastores/migrations"
 
 var db *sqlx.DB
 
-func GetSqlDB(driverName, dataSourceName string) *sqlx.DB {
+func GetSqlDB(driverName, dataSourceName string) (*sqlx.DB, error) {
 	if db != nil {
-		return db
+		return db, nil
 	}
 
-	db, _ = sqlx.Open(driverName, dataSourceName)
+	db, err := sqlx.Open(driverName, dataSourceName)
 
-	return db
+	return db, err
 }
 
 // RunSqlMigrations runs all migrations higher version

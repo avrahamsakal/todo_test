@@ -1,5 +1,8 @@
-ballastSize: 0
+ballast_size: 0
+
 database:
-  driverName: mysql
-  dataSourceName: test:test@(localhost:3306)/todo_test
-  keepAliveSeconds: 10
+  driver_name: mysql
+  data_source_name: larkUser:larkPassword@(localhost:3306)/todo_test
+  keep_alive_seconds: 10
+session:
+  expiration_days: 14

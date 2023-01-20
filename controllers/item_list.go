@@ -1,5 +1,7 @@
 package controllers
 
-type ItemList struct {
-	CrudController
+import "github.com/jordan-borges-lark/todo_test/models"
+
+type ItemList[M models.IModel[any]] struct {
+	CrudController[M]
 }

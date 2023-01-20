@@ -13,16 +13,20 @@ type Config struct {
 
 	// Config fields
 	
-	BallastSize int64 //`yaml:"ballastSize"` // This annotation should be unnecessary
+	Ballast_Size int64 //`yaml:"ballastSize"` // This annotation should be unnecessary
 
 	// Config collections
 	
 	Database Database
+	Session Session
 }
 type Database struct {
-	DriverName       string
-	DataSourceName   string
-	KeepAliveSeconds int64
+	Driver_Name       string
+	Data_Source_Name   string
+	Keep_Alive_Seconds int64
+}
+type Session struct {
+	Expiration_Days int64
 }
 
 func (c *Config) Load(env string) error {

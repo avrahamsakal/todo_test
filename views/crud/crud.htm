@@ -1,6 +1,8 @@
+<script type="text/javascript" src="crud.js" />
+
 <h2>{{.entityName}}</h2>
 
-{{range .values}}
+{{range .fields}}
 <div>
     <label for="{{.key}}">{{.key}}:</label>
     <input class="fields" name="{{.key}}" type="text" placeholder="Example {{.key}}" value="{{.value}}" />
@@ -10,7 +12,8 @@
 <br />
 
 {{range .collections}}
-<h3>{{.entityName}}</h3>
+{{range .}}
+<h3>{{.entityName}}</h3><!--@TODO: Only show this the first loop iteration-->
 
     {{range .fields}}
     <div>
@@ -26,10 +29,9 @@
     -->
 
 {{end}}
+{{end}}
 
 <br />
-
-<script type="text/javascript" src="crud.js" />
 
 <!--<div>
     <label for="keywords">Search:</label>

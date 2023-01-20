@@ -1,5 +1,8 @@
-ballastSize: 30
+ballast_size: 30 # 10 GiB RAM
+
 database:
-  driverName: mysql
-  dataSourceName: mysql:3306
-  keepAliveSeconds: 10
+  driver_name: mysql
+  data_source_name: mysql:3306
+  keep_alive_seconds: 10
+session:
+  expiration_days: 14

@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/jasonlvhit/gocron"
@@ -46,7 +47,7 @@ func main() {
 	/* === Golang-specific memory ballast === */
 
 	// Create a large heap allocation; 30 means 10 GiB
-	ballast := make([]byte, 10<<cfg.BallastSize)
+	ballast := make([]byte, 10<<cfg.Ballast_Size)
 	go func(b []byte) {
 		select {} // Blocks forever to keep GC from collecting ballast
 	}(ballast)
@@ -54,10 +55,17 @@ func main() {
 	/* === SQL === */
 
 	// Create DB connection
-	db := datastores.GetSqlDB(
-		cfg.Database.DriverName,
-		cfg.Database.DataSourceName,
+	db, err := datastores.GetSqlDB(
+		cfg.Database.Driver_Name,
+		cfg.Database.Data_Source_Name,
 	)
+	if err != nil || db == nil {
+		panic(fmt.Sprint(
+			"Unable to connect to DB '",
+			cfg.Database.Driver_Name,
+			"':", err,
+		))
+	}
 	defer db.Close()
 
 	// Keep-alive timer to keep DB connected
@@ -67,7 +75,7 @@ func main() {
 			panic(err)
 		}
 		time.Sleep(time.Duration(
-			cfg.Database.KeepAliveSeconds * int64(time.Second)),
+			cfg.Database.Keep_Alive_Seconds * int64(time.Second)),
 		)
 		go keepalive(db) // Without a goroutine here you'll have a stack overflow
 	}
@@ -75,12 +83,16 @@ func main() {
 
 	/* === Load session store === */
 
-	sessionStore := sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
-	
+	ss := sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
+
 	/* === Cron jobs === */
-	{
-		cron := cron{}
-		gocron.Every(1).Day().Do(cron.sampleCronJob)
+
+	{ // (Limit scope of this block, it's not reused)
+		cron := cron{
+			SessionExpirationDays: cfg.Session.Expiration_Days,
+			Database:              db,
+		}
+		gocron.Every(1).Day().Do(cron.pruneExpiredSessions)
 		cron.startJobs()
 	}
 
@@ -90,55 +102,23 @@ func main() {
 
 	r := mux.NewRouter()
 
-	// Home page default is to create a new list
-	// @TODO: Make home page be the MAX(updated_at) list?
+	// Root/home page default is to create a new list
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// If you have no user, a session and session user is
+		// created for you by /list/0
 		http.Redirect(w, r, "/list/0", http.StatusSeeOther)
+		// @TODO: Make home page be the MAX(updated_at) list; if NULL redirs to /list/0
 	}).Methods("GET")
 
 	// Set up CRUD routes
-
-	var overrides = map[string]string{
-		models.ItemList{}.GetTableName():     "list",
-		models.ItemListItem{}.GetTableName(): "item",
-	}
-
-	for m, cc := range map[interface{}]interface{}{
-		models.User{}:         controllers.User{}, // @TODO: With reflection you wouldn't even need to wire this up
-		models.ItemList{}:     controllers.ItemList{},
-		models.ItemListItem{}: controllers.ItemListItem{},
+	for _, cc := range []controllers.ICrudController[models.IModel[models.Model]]{ // @TODO: With reflection you wouldn't even need to wire this up
+		controllers.User[models.User]{},
+		controllers.ItemList[models.ItemList]{},
+		controllers.ItemListItem[models.ItemListItem]{},
 	} {
-		// Set up base crud controller
-		m := m.(models.Model)
-		cc := cc.(controllers.CrudController)
-		cc.Database = db
-		cc.Config = cfg
-		cc.Session = sessionStore
-		cc.SetModel(&m)
-
-		entityName := m.GetTableName()
-		if newName, exists := overrides[entityName]; exists {
-			entityName = newName
-		}
-
-		// Add routes for each CRUD operation
-		for path, handlers := range map[string]map[string]func(w http.ResponseWriter, r *http.Request){
-			"/" + helpers.Pluralize(entityName): {
-				//"GET": cc.Index, // Not req'd for this project
-			}, "/" + entityName: {
-				"POST": cc.Create,
-			}, "/" + entityName + "/{id}": {
-				"GET":    cc.Read,
-				"PATCH":  cc.Update,
-				"PUT":    cc.Update,
-				"DELETE": cc.Delete,
-			},
-		} {
-			for method, handler := range handlers {
-				r.HandleFunc(path, handler).Methods(method)
-			}
-		}
-	}
+		//cc.CrudController = controllers.CrudController[models.User]{db, ss, m, cfg}
+		crudHandleFunc(r, cc, db, cfg, ss)
+	}	
 
 	// @TODO: Add middleware
 	//mux.Use(authMiddleware) // Auths user for read/write action on model requested
@@ -147,4 +127,49 @@ func main() {
 	fmt.Println("Running on port", os.Getenv("APP_PORT"))
 	log.Println("Running on port", os.Getenv("APP_PORT"))
 	log.Fatal(http.ListenAndServe(":"+os.Getenv("APP_PORT"), r))
+}
+
+var crudRouteOverrides = map[string]string{ // @TODO: Pull this from the config?
+	models.ItemList{}.GetTableName():     "list",
+	models.ItemListItem{}.GetTableName(): "item",
+}
+
+func crudHandleFunc[CC controllers.ICrudController[models.IModel[any]]](
+	r *mux.Router,
+	cc CC,
+	db *sqlx.DB,
+	cfg *config.Config,
+	sessionStore *sessions.CookieStore,
+) {
+	cc := cc.Get() // todo implement this on both CC and ICC
+
+	// Set up base crud controller
+	cc.Database = db
+	cc.Config = cfg
+	cc.Session = sessionStore
+	//cc.SetModel(m) // Should be magically handled with generics
+
+	m := cc.GetModel()
+	entityName := m.GetTableName()
+	if newName, exists := crudRouteOverrides[entityName]; exists {
+		entityName = newName
+	}
+
+	// Add routes for each CRUD operation
+	for path, handlers := range map[string]map[string]func(w http.ResponseWriter, r *http.Request){
+		"/" + helpers.Pluralize(entityName): {
+			//"GET": cc.Index, // Not req'd for this project
+		}, "/" + entityName: {
+			"POST": cc.Create,
+		}, "/" + entityName + "/{id}": {
+			"GET":    cc.Read,
+			"PATCH":  cc.Update,
+			"PUT":    cc.Update,
+			"DELETE": cc.Delete,
+		},
+	} {
+		for method, handler := range handlers {
+			r.HandleFunc(path, handler).Methods(method)
+		}
+	}
 }

@@ -1,6 +1,3 @@
-// @TODO: Use this package to implement
-// view models and have strongly-typed
-// parameters passed to the template engine
 package views
 
 import (
@@ -19,7 +16,6 @@ func GetView(
 	layoutName string,
 	values map[string]interface{},
 ) (string, error) {
-	values["entityName"] = viewName
 	elem, err := getElement(viewName, values)
 	if err != nil {
 		return elem, err
@@ -55,7 +51,8 @@ func getElement(elementName string, values map[string]interface{}) (string, erro
 	if err = t.Execute(buf, values); err != nil {
 		return "", err
 	}
-	return buf.String(), nil
+	return "\n\n<!-- View: " + elementName + " -->\n\n" +
+		buf.String(), nil
 
 	//@TODO: It would be super trivial to test whether string "elem"
 	// has any parameters that weren't found in what we passed for

@@ -1,12 +1,10 @@
 package controllers
 
-type User struct { // implements ICrudController
-	CrudController
+import "github.com/jordan-borges-lark/todo_test/models"
+
+type User[M models.IModel[any]] struct { // implements ICrudController
+	CrudController[M]
 }
-
-
-
-
 
 /*func (u *User) Create(w http.ResponseWriter, r *http.Request) {
 	// @TODO add to r.Context to tell Update this is a create operation
@@ -29,7 +27,7 @@ func (u *User) Update(w http.ResponseWriter, r *http.Request) {
 	/*if u.Model.Id != session.getLoggedInUserId() {
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
-	}*//*
+	}*/ /*
 	u.CrudController.Update(w, r)
 }*/
 
@@ -76,7 +74,7 @@ func (u *User) Update(w http.ResponseWriter, r *http.Request) {
 	/*if user.Id != session.getLoggedInUserId() {
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
-	}*//*
+	}*/ /*
 	if _, err := models.Update(u.Database, *user); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

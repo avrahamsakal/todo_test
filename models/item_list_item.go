@@ -7,11 +7,6 @@ import (
 func (ili ItemListItem) GetTableName() string {
 	return "item_list_item"
 }
-func (ili ItemListItem) GetId() int                  { return ili.Id }
-func (ili ItemListItem) CanUserRead(userId int) bool { return ili.CanUserWrite(userId) }
-func (ili ItemListItem) CanUserWrite(userId int) bool {
-	return ili.ItemList != nil && ili.ItemList.UserId == userId
-}
 
 type ItemListItem struct {
 	Model
@@ -21,24 +16,35 @@ type ItemListItem struct {
 	Text string `db:"text"`
 }
 
-func (ili ItemListItem) Load(db *sqlx.DB) (*ItemListItem, error) {
+// func (ili ItemListItem) GetId() int                { return ili.Id }
+func (ili ItemListItem) Get() IModel[any]            { return ili }
+func (ili ItemListItem) SetId(id int) IModel[any]    { ili.Id = id; return ili }
+func (ili ItemListItem) CanUserRead(userId int) bool { return ili.CanUserWrite(userId) }
+func (ili ItemListItem) CanUserWrite(userId int) bool {
+	return ili.ItemList != nil && ili.ItemList.UserId == userId
+}
+func (ili ItemListItem) Load(db *sqlx.DB, flags ...bool) (IModel[any], error) {
 	// lazy load by default
-	if il, err := Get(db, ItemList{Model: Model{Id: ili.ItemListId}}); err != nil {
-		return &ili, err
-	} else {
-		ili.ItemList = il
+	il, err := Read(db, ItemList{Model: Model{Id: ili.ItemListId}})
+	if err != nil {
+		return ili, err
 	}
-	/* // Use cascading load instead
-	} else if m, err := il.Load(db); err != nil { 
-		return &ili, err
-	} else {
-		ili.ItemList = m.(*ItemList)
-	}*/
+	ili.ItemList = &il
 
-	return &ili, nil
+	// Use cascading load instead
+	const lazy/*, flag2, flag3*/ = 0/*, val2, val3*/
+	if len(flags) != 0 && !flags[lazy] {	
+		if m, err := il.Load(db, flags...); err != nil {
+			return ili, err
+		} else {
+			ili.ItemList = m.(*ItemList)
+		}
+	}
+
+	return ili, nil
 }
 
-func GetItemListsItems(db *sqlx.DB, itemListId int) ([]ItemListItem, error) {
+func GetItemListsItems[M Model](db *sqlx.DB, itemListId int) ([]ItemListItem, error) {
 	items := []ItemListItem{}
 
 	err := db.Select(&items, `

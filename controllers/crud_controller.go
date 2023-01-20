@@ -12,11 +12,11 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/jordan-borges-lark/todo_test/config"
 	"github.com/jordan-borges-lark/todo_test/models"
-	"github.com/jordan-borges-lark/todo_test/views"
+	views "github.com/jordan-borges-lark/todo_test/views/crud"
 )
 
 // Not an entity
-type ICrudController interface { // implements IController
+type ICrudController[M models.IModel[any]] interface { // implements IController
 	Controller
 	Create(w http.ResponseWriter, r *http.Request)
 	Read(w http.ResponseWriter, r *http.Request)
@@ -24,29 +24,30 @@ type ICrudController interface { // implements IController
 	Delete(w http.ResponseWriter, r *http.Request)
 
 	GetDatabase() *sqlx.DB
-	GetModel() models.IModel
-	SetModel(*models.Model)
+	GetModel() M
+	SetModel(M)
 }
-type CrudController struct {
+
+type CrudController[M models.IModel[any]] struct {
 	Database *sqlx.DB
 	Session  *sessions.CookieStore // Temporary hack to get it to compile, this needs to be a generic session store
-	Model    *models.Model
+	Model    M
 	Config   *config.Config
 }
 
-func (cc *CrudController) GetDatabase() *sqlx.DB {
+func (cc *CrudController[M]) GetDatabase() *sqlx.DB {
 	return cc.Database
 }
-func (cc *CrudController) GetModel() models.Model   { return *cc.Model }
-func (cc *CrudController) SetModel(m *models.Model) { cc.Model = m }
+func (cc *CrudController[M]) GetModel() M  { return cc.Model }
+func (cc *CrudController[M]) SetModel(m M) { cc.Model = m }
 
-func (cc *CrudController) Create(w http.ResponseWriter, r *http.Request) {
+func (cc *CrudController[M]) Create(w http.ResponseWriter, r *http.Request) {
 	// @TODO add to r.Context to tell Update this is a create operation
 	// @TODO: atm Create must be called without ID, or with nil/zero ID, otherwise it becomes like a regular Update attempt
 	cc.Update(w, r)
 }
 
-func (cc *CrudController) Read(w http.ResponseWriter, r *http.Request) {
+func (cc *CrudController[M]) Read(w http.ResponseWriter, r *http.Request) {
 	m := cc.ReadBase(w, r)
 	// JSON
 	if r.Header.Get("Content-Type") == "application/json" {
@@ -56,35 +57,43 @@ func (cc *CrudController) Read(w http.ResponseWriter, r *http.Request) {
 	// @TODO: XML can by done just by replacing json.Marshal with xml.Marshal
 
 	// HTML
-	OutputHtml(w, m, "crud")
+	OutputHtml(w, m)
 }
-func (cc *CrudController) ReadBase(w http.ResponseWriter, r *http.Request) *models.Model {
-	if m, err := cc.GetModelByIdFromRequest(r); err != nil { // Auth
+func (cc *CrudController[M]) ReadBase(w http.ResponseWriter, r *http.Request) M {
+	m, err := cc.GetModelByIdFromRequest(r)
+	if err != nil { // Auth
 		http.Error(w, err.Message, err.StatusCode)
-		return nil
-	} else {
-		return m
 	}
+
+	return m
 }
 
-func (cc *CrudController) Update(w http.ResponseWriter, r *http.Request) {
+func (cc *CrudController[M]) Update(w http.ResponseWriter, r *http.Request) {
 	OutputJson(w, cc.UpdateBase(w, r))
 }
-func (cc *CrudController) UpdateBase(w http.ResponseWriter, r *http.Request) *sql.Result {
+
+/*func toModel[M models.Model](m M) *models.Model {
+	m2 := models.Model(m)
+	return &m2
+}*/
+
+func (cc *CrudController[M]) UpdateBase(w http.ResponseWriter, r *http.Request) *sql.Result {
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
 	m := cc.GetModel()
+	
 	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return nil
 	}
 
 	// Load collections (needed for auth)
-	if m2, err := m.Load(cc.Database); err != nil {
+	m2, err := m.Load(cc.Database, false)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return nil
 	} else {
-		m = m2.(models.Model)
+		m = m2.(M)
 	}
 
 	// Auth
@@ -102,30 +111,31 @@ func (cc *CrudController) UpdateBase(w http.ResponseWriter, r *http.Request) *sq
 	}
 }
 
-func (cc *CrudController) Delete(w http.ResponseWriter, r *http.Request) {
+func (cc *CrudController[M]) Delete(w http.ResponseWriter, r *http.Request) {
 	OutputJson(w, cc.DeleteBase(w, r))
 }
-func (cc *CrudController) DeleteBase(w http.ResponseWriter, r *http.Request) *sql.Result {
+func (cc *CrudController[M]) DeleteBase(w http.ResponseWriter, r *http.Request) *sql.Result {
 	// Auth
 	m, err := cc.GetModelByIdFromRequest(r)
 	if err != nil {
 		http.Error(w, err.Message, err.StatusCode)
 		return nil
 	}
+	//m := m2.Get()
 
 	// Enterprise data retention requirements?
 	// Need to soft-delete by setting deleted_at = NOW()
 	//if config.Database.ShouldSoftDelete {
-		now := time.Now()
-		m.DeletedAt = &now
-		
-		// Update
-		if result, err := models.Update(cc.Database, m); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return nil
-		} else {
-			return &result
-		}
+	now := time.Now()
+	m.SetDeletedAt(&now)
+
+	// Update
+	if result, err := models.Update(cc.Database, m); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil
+	} else {
+		return &result
+	}
 	//} // else @TODO
 }
 
@@ -139,32 +149,8 @@ func OutputJson(w http.ResponseWriter, value interface{}) {
 	}
 }
 
-func OutputHtml(w http.ResponseWriter, m *models.Model, viewName string) {
-	//fields := models.GetDBFields(m)
-
-	// This is called a marshal-unmarshal cycle; needed to convert struct => map[string]iface{}
-	var fields map[string]interface{}
-	byt, _ := json.Marshal(m)
-	json.Unmarshal(byt, &fields)
-
-	// Migrate collection fields to a separate view value "collections"
-	collections := map[string][]map[string]interface{}{}
-	for k, v := range fields {
-		if array, isArray := v.([]map[string]interface{}); isArray {
-			// Add a model with ID "0" to each collection
-			// to create a blank row at the end (in the view)
-			collections[k] = append(array, map[string]interface{}{"id":0})
-			// Migrate value from "fields" to "collections"
-			delete(fields, k)
-		}
-	}
-
-	values := map[string]interface{}{
-		"name": m.GetTableName(),
-		"fields": fields,
-		"collections": collections,
-	}
-	body, err := views.GetView(viewName, "", values)
+func OutputHtml[M models.IModel[any]](w http.ResponseWriter, m M) {
+	body, err := views.GetCrudView(m)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -179,33 +165,37 @@ type HttpError struct {
 
 func (he HttpError) Error() string { return he.Message }
 
-func (cc *CrudController) GetModelByIdFromRequest(r *http.Request) (*models.Model, *HttpError) {
+func (cc *CrudController[M]) GetModelByIdFromRequest(r *http.Request) (M, *HttpError) {
 	// Get lazy-loaded model
 	vars := mux.Vars(r)
-	m := cc.Model
-	m.Id, _ = strconv.Atoi(vars["id"])
-	if m.Id == 0 {
+	m := cc.GetModel()
+	if id, _ := strconv.Atoi(vars["id"]); id == 0 {
 		return m, &HttpError{StatusCode: http.StatusBadRequest, Message: "400 Bad Request\nInvalid value for argument 'id'"}
+	} else {
+		m.SetId(id)
 	}
 
-	m, err := models.Get(cc.GetDatabase(), *m)
-	if err != nil { // @TODO: Only echo DB errors when config.Environment == "dev"
-		return m, &HttpError{StatusCode: http.StatusInternalServerError, Message: err.Error()}
-	} else if m.Id == 0 {
+	if m2, err := models.Read(cc.GetDatabase(), m); err != nil { // @TODO: Only echo DB errors when config.Environment == "dev"
+		return m2, &HttpError{StatusCode: http.StatusInternalServerError, Message: err.Error()}
+	} else {
+		m = m2
+	}
+
+	if m.GetId() == 0 {
 		return m, &HttpError{StatusCode: http.StatusNotFound, Message: "404 Not Found"}
 	}
 
 	// Load model (required for auth to work)
-	m2, err := m.Load(cc.Database)
-	if err != nil { // @TODO: Only echo DB errors when config.Environment == "dev"
-		return m, &HttpError{StatusCode: http.StatusInternalServerError, Message: err.Error()}
+	if m2, err := m.Load(cc.Database, false); err != nil { // @TODO: Only echo DB errors when config.Environment == "dev"
+		return m2.(M), &HttpError{StatusCode: http.StatusInternalServerError, Message: err.Error()}
+	} else {
+		m = m2.(M)
 	}
-	m = m2.(*models.Model)
 
 	// Authorize user for reading this model
 	//if !m.CanUserRead(cc.Session.GetLoggedInUserId()) {
 	if !m.CanUserRead(123) {
-		return nil, &HttpError{StatusCode: http.StatusForbidden, Message: "403 Forbidden"}
+		return m, &HttpError{StatusCode: http.StatusForbidden, Message: "403 Forbidden"}
 	}
 
 	return m, nil
