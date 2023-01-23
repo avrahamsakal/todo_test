@@ -58,8 +58,8 @@ func RunSqlMigrations(db *sqlx.DB) error {
 }
 
 
-func RunSqlMigration(db *sqlx.DB, entryName string) error {
-	byt, err := os.ReadFile(migrationDirName + "/" + entryName)
+func RunSqlMigration(db *sqlx.DB, filename string) error {
+	byt, err := os.ReadFile(migrationDirName + "/" + filename)
 	if err != nil {
 		return err
 	}

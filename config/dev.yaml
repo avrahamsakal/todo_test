@@ -2,7 +2,7 @@ ballast_size: 0
 
 database:
   driver_name: mysql
-  data_source_name: larkUser:larkPassword@(localhost:3306)/todo_test
+  data_source_name: root:test@(mysql:3306)/
   keep_alive_seconds: 10
 session:
   expiration_days: 14

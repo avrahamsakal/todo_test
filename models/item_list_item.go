@@ -10,18 +10,18 @@ func (ili ItemListItem) GetTableName() string {
 
 type ItemListItem struct {
 	Model
-	ItemListId int `db:"item_list_id"`
-	ItemList   *ItemList
 
-	Text string `db:"text"`
+	ItemListId int `db:"item_list_id"`
+	ItemList   ItemList
+
+	Text string `db:"○"` // We never refer to this in the code so it doesn't matter what it's named
 }
 
-// func (ili ItemListItem) GetId() int                { return ili.Id }
 func (ili ItemListItem) Get() IModel[any]            { return ili }
 func (ili ItemListItem) SetId(id int) IModel[any]    { ili.Id = id; return ili }
 func (ili ItemListItem) CanUserRead(userId int) bool { return ili.CanUserWrite(userId) }
 func (ili ItemListItem) CanUserWrite(userId int) bool {
-	return ili.ItemList != nil && ili.ItemList.UserId == userId
+	return ili.ItemList.UserId == userId
 }
 func (ili ItemListItem) Load(db *sqlx.DB, flags ...bool) (IModel[any], error) {
 	// lazy load by default
@@ -29,15 +29,15 @@ func (ili ItemListItem) Load(db *sqlx.DB, flags ...bool) (IModel[any], error) {
 	if err != nil {
 		return ili, err
 	}
-	ili.ItemList = &il
+	ili.ItemList = il
 
 	// Use cascading load instead
-	const lazy/*, flag2, flag3*/ = 0/*, val2, val3*/
-	if len(flags) != 0 && !flags[lazy] {	
+	const lazy = /*, flag2, flag3*/ 0 /*, val2, val3*/
+	if len(flags) != 0 && !flags[lazy] {
 		if m, err := il.Load(db, flags...); err != nil {
 			return ili, err
 		} else {
-			ili.ItemList = m.(*ItemList)
+			ili.ItemList = m.(ItemList)
 		}
 	}
 

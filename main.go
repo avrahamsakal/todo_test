@@ -3,8 +3,12 @@ package main
 import (
 	"fmt"
 	"log"
+	"mime"
 	"net/http"
 	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -12,6 +16,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/jasonlvhit/gocron"
 	"github.com/jmoiron/sqlx"
+	"github.com/joho/godotenv"
 	"github.com/jordan-borges-lark/todo_test/config"
 	"github.com/jordan-borges-lark/todo_test/controllers"
 	"github.com/jordan-borges-lark/todo_test/datastores"
@@ -25,8 +30,10 @@ import (
 func main() {
 	/* === Config === */
 
-	// Load config
+	// Load .env file into environment
+	godotenv.Load()
 
+	// Load config
 	appEnv := os.Getenv("APP_ENV")
 	if appEnv == "" { // There's no null coalescing operator ??/?:/|| or ternaries in golang, so this pattern is idiomatic for go
 		appEnv = "dev"
@@ -37,7 +44,6 @@ func main() {
 	}
 
 	// Environment-specific startup logic
-
 	switch appEnv {
 	case "dev":
 		fmt.Println("Debug statements")
@@ -67,6 +73,9 @@ func main() {
 		))
 	}
 	defer db.Close()
+
+	// Run DB migrations
+	datastores.RunSqlMigrations(db)
 
 	// Keep-alive timer to keep DB connected
 	var keepalive func(db *sqlx.DB)
@@ -111,65 +120,104 @@ func main() {
 	}).Methods("GET")
 
 	// Set up CRUD routes
-	for _, cc := range []controllers.ICrudController[models.IModel[models.Model]]{ // @TODO: With reflection you wouldn't even need to wire this up
-		controllers.User[models.User]{},
-		controllers.ItemList[models.ItemList]{},
-		controllers.ItemListItem[models.ItemListItem]{},
+	for _, m := range []models.IModel[any]{ // @TODO: With reflection you wouldn't even need to wire this up
+		models.User{},     // i.e. profile page
+		models.ItemList{}, // i.e. todo list
+		models.ItemListItem{},
+		models.Metadata{}, // i.e. admin panel
 	} {
-		//cc.CrudController = controllers.CrudController[models.User]{db, ss, m, cfg}
-		crudHandleFunc(r, cc, db, cfg, ss)
-	}	
+		crudHandleFunc(r, controllers.CrudController[models.IModel[any]]{
+			controllers.Controller{}, db, ss, m, cfg,
+		})
+	}
+
+	// Set up static file handler. MUST be the last (i.e. catch-all) route to add!!!
+	r.PathPrefix("/").HandlerFunc(catchAllHandler)
 
 	// @TODO: Add middleware
 	//mux.Use(authMiddleware) // Auths user for read/write action on model requested
-	//mux.Use(jsonMiddleware)
 
-	fmt.Println("Running on port", os.Getenv("APP_PORT"))
-	log.Println("Running on port", os.Getenv("APP_PORT"))
-	log.Fatal(http.ListenAndServe(":"+os.Getenv("APP_PORT"), r))
+	// Start server and log on failure
+
+	port := os.Getenv("APP_PORT")
+	if port == "" {
+		port = "1818"
+	}
+	fmt.Println("Running on port", port)
+	log.Println("Running on port", port)
+	log.Fatal(http.ListenAndServe(":"+port, r))
 }
 
-var crudRouteOverrides = map[string]string{ // @TODO: Pull this from the config?
+// e.g. /list/12345, /item/12345 /profile, /admin
+var modelFriendlyNames = map[string]string{
+	models.User{}.GetTableName():         "profile",
 	models.ItemList{}.GetTableName():     "list",
 	models.ItemListItem{}.GetTableName(): "item",
+	models.Metadata{}.GetTableName():     "admin",
 }
 
 func crudHandleFunc[CC controllers.ICrudController[models.IModel[any]]](
 	r *mux.Router,
 	cc CC,
-	db *sqlx.DB,
-	cfg *config.Config,
-	sessionStore *sessions.CookieStore,
 ) {
-	cc := cc.Get() // todo implement this on both CC and ICC
-
-	// Set up base crud controller
-	cc.Database = db
-	cc.Config = cfg
-	cc.Session = sessionStore
-	//cc.SetModel(m) // Should be magically handled with generics
-
 	m := cc.GetModel()
-	entityName := m.GetTableName()
-	if newName, exists := crudRouteOverrides[entityName]; exists {
-		entityName = newName
-	}
 
 	// Add routes for each CRUD operation
-	for path, handlers := range map[string]map[string]func(w http.ResponseWriter, r *http.Request){
-		"/" + helpers.Pluralize(entityName): {
-			//"GET": cc.Index, // Not req'd for this project
-		}, "/" + entityName: {
-			"POST": cc.Create,
-		}, "/" + entityName + "/{id}": {
-			"GET":    cc.Read,
-			"PATCH":  cc.Update,
-			"PUT":    cc.Update,
-			"DELETE": cc.Delete,
-		},
-	} {
-		for method, handler := range handlers {
-			r.HandleFunc(path, handler).Methods(method)
+	for _, entityName := range getEntityNames(m) {
+		for path, handlers := range map[string]map[string]func(w http.ResponseWriter, r *http.Request){
+			"/" + helpers.Pluralize(entityName): {
+				"GET": cc.Index, // Not req'd for this project
+			}, "/" + entityName: {
+				"POST": cc.Create,
+			}, "/" + entityName + "/{id}": {
+				"GET":    cc.Read,
+				"PATCH":  cc.Update,
+				"PUT":    cc.Update,
+				"DELETE": cc.Delete,
+			},
+		} {
+			for method, handler := range handlers {
+				r.HandleFunc(path, handler).Methods(method)
+			}
 		}
 	}
+}
+
+// Build list of aliases for model name
+func getEntityNames[M models.IModel[any]](m M) []string {
+	entityNames := []string{m.GetTableName()}
+	if newName, exists := modelFriendlyNames[entityNames[0]]; exists {
+		entityNames = append(entityNames, newName)
+	}
+	typeName := ""
+	if T := reflect.TypeOf(m); T.Kind() == reflect.Ptr {
+		typeName = "*" + T.Elem().Name()
+	} else {
+		typeName = T.Name()
+	}
+	entityNames = append(entityNames, strings.Replace(typeName, "models.", "", 1))
+	return entityNames
+}
+
+// catchAllHandler returns a static file if file exists; else 404
+func catchAllHandler(w http.ResponseWriter, r *http.Request) {
+	path, err := filepath.Abs(r.URL.Path)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	path = filepath.Join("./", path)
+
+	_, err = os.Stat(path)
+	if os.IsNotExist(err) {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Add("Content-Type", mime.TypeByExtension(path))
+	http.ServeFile(w, r, path)
 }

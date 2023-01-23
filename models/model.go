@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"fmt"
 	"reflect"
 	"strings"
 	"time"
@@ -11,7 +12,6 @@ import (
 
 // Not an entity
 type IModel[M any] interface {
-	Get() IModel[M]
 	GetId() int
 	SetId(int) IModel[M]
 	GetTableName() string
@@ -21,7 +21,7 @@ type IModel[M any] interface {
 	SetDeletedAt(*time.Time) IModel[M]
 }
 type Model struct {
-	Id        int        `db:"id"` // @TODO: Make this *int
+	Id        int        `db:"id"`
 	CreatedAt *time.Time `db:"created_at"`
 	UpdatedAt *time.Time `db:"updated_at"`
 	DeletedAt *time.Time `db:"deleted_at"`
@@ -41,34 +41,68 @@ func (m Model) Load(db *sqlx.DB, flags ...bool) (IModel[any], error) {
 	return m, nil
 }
 
-func Read[M IModel[any]](db *sqlx.DB, m M) (M, error) {
-	tableName := m.GetTableName()
-	id := m.GetId()
-
-	if err := db.Get(&m, `
-		SELECT * FROM `+tableName+`
-		WHERE id = ?
-		LIMIT 1
-	`, id); err != nil {
-		var null M
-		return null, err
+func Where[M IModel[any]](db *sqlx.DB, filters map[string]interface{}, opts ...interface{}) ([]M, error) {
+	const nLimit = 0
+	limit := 1
+	if len(opts) > nLimit {
+		limit = opts[nLimit].(int)
 	}
 
-	return m, nil
+	var m M
+	query := `
+		SELECT * FROM ` + m.GetTableName() + `
+		WHERE 1=1
+	`
+	params, i := make([]interface{}, len(filters)), 0
+	for k, v := range filters {
+		query += ` AND ` + k + ` = ? `
+		params[i] = v
+	}
+	query += fmt.Sprint(` LIMIT `, limit)
+
+	mArr := []M{}
+	var err error
+	if limit == 1 {
+		err = db.Get(&m, query, params...)
+		mArr = []M{m}
+	} else {
+		err = db.Select(&mArr, query, params...)
+	}
+
+	return mArr, err
 }
 
-func Count[M IModel[any]](db *sqlx.DB, m M, id int) (int64, error) {
+func All[M IModel[any]](db *sqlx.DB) ([]M, error) {
+	const maxObjectsToFetch = 1000
+	// @TODO: Make this return Select and have Select return this blank where
+	return Where[M](db, map[string]interface{}{}, maxObjectsToFetch)
+}
+
+func Count[M IModel[any]](db *sqlx.DB) (int64, error) {
 	var count int64
+	var m M
 	if err := db.Get(&count, "SELECT COUNT(*) FROM "+m.GetTableName()); err != nil {
 		return count, err
 	}
 	return count, nil
 }
 
+func Read[M IModel[any]](db *sqlx.DB, m M) (M, error) {
+	if m.GetId() == 0 {
+		return m, nil
+	}
+	
+	mArr, err := Where[M](db, map[string]interface{}{"id": m.GetId()}, 1)
+	if len(mArr) > 0 {
+		m = mArr[0]
+	}
+	return m, err
+}
+
 // Update is really Upsert, due to time constraints and project req's
 // @TODO add parameter "upsert bool" default to false
 func Update[M IModel[any]](db *sqlx.DB, m M) (sql.Result, error) {
-	fields := getDBFields(m.Get())      // e.g. []string{"id", "snake_case"}
+	fields := getDBFields(m)      // e.g. []string{"id", "snake_case"}
 	csv := strings.Join(fields, ", ")   // e.g. "id, name, description"
 	csvc := strings.Join(fields, ", :") // e.g. ":id, :name, :description"
 	sql := "INSERT IGNORE INTO " + m.GetTableName() +

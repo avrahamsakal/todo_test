@@ -10,12 +10,16 @@ func (meta Metadata) GetTableName() string {
 
 type Metadata struct {
 	Model
+
 	Key   string `db:"text"`
 	Value string `db:"text"`
 }
 
-func (meta Metadata) CanMetadataRead(MetadataId int) bool  { return false }
-func (meta Metadata) CanMetadataWrite(MetadataId int) bool { return false }
+// Restrict to metadata R/W access to user 0 (admin user);
+// essentially this gives us a secure admin panel
+// (CanUserReads employ kal vaChomers with CanUserWrite)
+func (meta Metadata) CanUserRead(userId int) bool  { return meta.CanUserWrite(userId) }
+func (meta Metadata) CanUserWrite(userId int) bool { return userId == 0 }
 
 // GetMetadataByKey retrieves the value associated with the given key
 func GetMetadataByKey(db *sqlx.DB, key string) (string, error) {

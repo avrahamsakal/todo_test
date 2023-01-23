@@ -2,12 +2,11 @@ VET_REPORT=vet.report.txt
 TEST_REPORT=test.report.txt
 GOARCH=amd64
 GOOS?=darwin
-MYSQL_VER=1.6.2
+MYSQL_VER=latest
 VERSION?=$(shell date '+%Y%m%d.%H%M%S')
 COMMIT=$(shell git rev-parse HEAD)
 BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
 HOST=$(shell hostname)
-APP_PORT=${APP_PORT}
 
 BUILD_DIR=$(shell pwd)
 BUILD_DIR_LINK=$(shell readlink ${BUILD_DIR})
@@ -30,7 +29,7 @@ build:
 .PHONY: runlocal
 runlocal: openapi
 	@GO111MODULE=off go get github.com/cespare/reflex
-	APP_ENV=dev go run ./main.go
+	APP_ENV=dev go run ./*.go
 	 ~/go/bin/reflex -r '\.go' -s -- sh -c "go run ./main.go"
 
 .PHONY: test
@@ -70,9 +69,8 @@ clean:
 openapi:
 	@GO111MODULE=off go get -v github.com/swaggo/swag/cmd/swag
 	rm -rf api/v1/docs
-	$(GOPATH)/bin/swag init -g ./cmd/service/main.go -d . --output api/v1/docs
+	$(GOPATH)/bin/swag init -g ./main.go -d . --output api/v1/docs
 
 .PHONY: rundocker
 rundocker: build-image
-	docker run --name mysql -e MYSQL_ROOT_PASSWORD=test -d mysql:$(MYSQL_VER)
-	docker run --rm --name todo_test -p $(APP_PORT):$(APP_PORT) todo_test
+	./run.sh

@@ -1,1 +1,1 @@
-/* @TODO mysqldump > this_file.sql */
+CREATE DATABASE todo_test;
