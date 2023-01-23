@@ -1,0 +1,71 @@
+/* @TODO: Of course you would extract this out to
+    CSS/LESS with an inheritance hierarchy */
+
+/* form */
+div {
+    margin: 5px 5px 5px 5px;
+}
+div.directions {
+    display: block;
+    text-align: right;
+    width: 500px;
+    font-style: italic;
+}
+label {
+    display: inline-block;
+    text-align: right;
+    width: 140px;
+}
+
+/* links */
+a:link {color: Goldenrod}
+a:visited {color: OliveDrab}
+a:hover, a:active {color: PaleGoldenrod}
+
+/* table */
+.table {display:table; box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19)}
+.row {display:table-row; margin: 0; padding: 0}
+.cell {display:table-cell; margin: 0; padding: 0}
+
+/* buttons */
+.small.awesome {font-size:11px}
+.green.awesome {background-color:OliveDrab}
+a.green.awesome {color:PaleGoldenrod}
+a.green.awesome:hover, a.green.awesome.active {color:LightGoldenrodYellow}
+.gold.awesome {background-color:Goldenrod}
+a.gold.awesome {color:LightGoldenrodYellow}
+a.gold.awesome:hover, a.green.awesome.active {color:White}
+.red.awesome {background-color:Crimson}
+a.red.awesome {color:LightPink}
+a.red.awesome:hover, a.green.awesome.active {color:White}
+
+.awesome{
+    background: #222 url(/static/overlay.png) repeat-x;
+    display: inline-block;
+    padding: 5px 10px 6px;
+    color: #fff;
+    text-decoration: none;
+    font-weight: bold;
+    line-height: 1;
+    border-radius: 5px;
+    -moz-border-radius: 5px;
+    -webkit-border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    -moz-box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    -webkit-box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    text-shadow: 0 -1px 1px rgba(0,0,0,0.25);
+    border-bottom: 1px solid rgba(0,0,0,0.25);
+    position: relative;
+    cursor: pointer;
+}
+
+/* faq */
+.margin-lr-100 {margin: 0 100px 0 100px}
+h2 {color:Goldenrod}
+h3 {color:Gold}
+h2, h3 {text-shadow: -1px 0 Grey, 0 1px Goldenrod, 1px 0 Goldenrod, 0 -1px Grey}
+
+
+.awesome.delete {
+    padding: 5px 5px 5px 5px;
+}

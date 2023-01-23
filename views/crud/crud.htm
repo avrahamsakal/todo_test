@@ -1,100 +1,105 @@
-<script type="text/javascript" src="crud.js" />
+{{define "View"}}
+<form method="POST" action="?"><fieldset>
+<legend style="font-size: 1.8em">
+    <img src="/static/entities/{{.EntityName}}.png"
+         alt="{{.FriendlyName}}"
+         style="vertical-align:middle"
+         border="0" />&nbsp;
+    {{.FriendlyName}}:
+</legend>
 
-<h2>{{.entityName}}</h2>
+<!--<h2>Fields</h2>-->
 
-{{range .fields}}
-<div>
-    <label for="{{.key}}">{{.key}}:</label>
-    <input class="fields" name="{{.key}}" type="text" placeholder="Example {{.key}}" value="{{.value}}" />
+<!-- Fields -->
+{{range .Fields}}
+<div style="padding-left: 20px">
+    <label for="{{.Key}}">{{.Key}}:</label>
+    <input class="field" name="{{.Key}}" type="text" placeholder="Example {{.Key}}" value="{{.Value}}" />
 </div>
 {{end}}
 
-<br />
+<!-- //@TODO: Store a CSRF token in the session and pass it through the ViewModel
+<input type="hidden" name="csrf-token" value="{{.CsrfToken}}" />-->
+<input type="hidden" name="nonce" value="12345TODO" />
 
-{{range .collections}}
-{{range .}}
-<h3>{{.entityName}}</h3><!--@TODO: Only show this the first loop iteration-->
+<div class="directions">
+    <a class="submit awesome green"
+        onclick="$(this).parents('form:first').submit(); return true;"
+        href="javascript:;">Save</a>
+</div>
+</fieldset></form>
 
-    {{range .fields}}
-    <div>
-        <label for="{{.key}}">{{.key}}:</label>
-        <input class="fields" name="{{.key}}" type="text" placeholder="Example {{.key}}" value="{{.value}}" />
-        &nbsp;<a class="delete awesome gold" href="#">Delete</a>
-    </div>
+<!--<br /><h2>Collections</h2>-->
+
+<!-- Collections -->
+{{range .Collections}}
+<!-- Collection -->
+{{$colLen := len .}}
+{{$isCollection := gt $colLen 1}}
+{{range $i, $entity := .}}
+{{if eq $i 0}}
+<form method="POST" action="/{{.EntityName}}" style="padding: 20px 20px 20px 20px"><fieldset>
+    <legend style="font-size: 1.8em; margin-left: 40px">
+        <a href="/{{.EntityName}}{{if ne $colLen 1}}s{{else}}/{{.Id}}{{end}}"><!-- Only objects can have a collection length of 1-->
+            {{.FriendlyName}}{{if $isCollection}}s{{end}}:
+        </a>
+    </legend>
     {{end}}
-    <!--
+
+    <!-- Collection Fields -->
+    {{range $j, $field := $entity.Fields}}
+        {{if ne $field.Key "Id"}}
+    <div>
+        <label for="{{$field.Key}}">
+            {{if eq $j 0}}
+            <a href="/{{$entity.EntityName}}/{{$entity.Id}}">
+                <img src="/static/entities/{{$entity.EntityName}}.png"
+                    alt="{{$entity.FriendlyName}}"
+                    style="vertical-align:middle"
+                    width="32" height="32"
+                    border="0"
+                /></a>&nbsp;
+            {{end}}
+            {{$field.Key}}:
+        </label>
+        <input class="field"
+            type="text"
+            name="{{$entity.EntityName}}[{{$entity.Id}}][{{$field.Key}}]"
+            placeholder="Example {{$field.Key}}"
+            onchange="return update(this);"
+            data-collection="{{if ne $colLen 1}}true{{else}}false{{end}}"
+            value="{{$field.Value}}" />&nbsp;
+            {{if eq $j 0}}
+        <a class="delete awesome red"
+        data-name="{{$entity.EntityName}}[{{$entity.Id}}]"
+        onclick="return del(this);"
+        href="javascript:;">x</a>
+            {{end}}
+    </div>
+        {{end}}
+    {{end}}
+    <!-- /*
         Normally there would be a div here for the blank row,
         with an entityId of 0, but the controller gives us
         a blank model to display here instead.
-    -->
-
+    */ -->
 {{end}}
+<div class="directions">
+    <a class="submit awesome green" href="javascript:;">Save</a>
+</div>
+</fieldset></form>
 {{end}}
 
 <br />
 
-<!--<div>
-    <label for="keywords">Search:</label>
-    <input name="keywords" type="text" placeholder="Example search" value="Example search" />
-</div>
-<div>
-    <label for="alignment">Left-handed?:</label>
-    <label style="display: inline">
-    <input type="radio" name="alignment" value="left" />
-    Left
-    </label>
-    <label style="display: inline">
-    <input type="radio" name="alignment" value="right" checked />
-    Right
-    </label>
-</div>
-<div>
-    <label for="tele">Remote?</label>
-    <label style="display: inline">
-        <input type="radio" name="tele" value="remote" checked />
-        Remote
-    </label>
-    <label style="display: inline">
-        <input type="radio" name="tele" value="office" />
-        In-Office
-    </label>
-</div>
-<div>
-    <h4>Location:</h4>
-</div>
-<div>
-    <label for="city">City:</label>
-    <input name="city" type="text" placeholder="Greater Miami" />
-</div>
-<div>
-    <div class="directions">(full name, not abbreviation)</div>
-    <label for="state">State/Province:</label>
-    <input name="state" type="text" placeholder="Florida" />
-</div>
-<div>
-    <div class="directions">(full name, not abbreviation)</div>
-    <label for="country">Country:</label>
-    <input name="country" type="text" placeholder="United States" />
-</div>
-
-<br />
-
-<div class="directions">
-    Options:
-    <a class="awesome green" id="previewLink" href="#" onclick="preview();">Preview</a><br />
-</div>-->
-<div class="directions">
-    <a class="awesome green" href="javascript:;" onclick="document.forms[0].submit(); return false;">Submit</a>
-</div>
-<!--<div class="directions">
-    <label for="email">Email:</label>
-    <input name="email" id="email" type="text" placeholder="email@mailinator.com" />
-    &nbsp;
-    <a class="awesome green" id="emailLink" href="#" onclick="return false;">Get email alerts</a>
-</div>-->
-
-<br />
+<script src="/views/{{.ElementName}}.js?x={{.NoCache}}" type="text/javascript"></script>
+<style src="/views/{{.ElementName}}.css?x={{.NoCache}}" type="text/css"></style>
+<script src="/views/{{.EntityName}}/{{.EntityName}}.js?x={{.NoCache}}" type="text/javascript"></script>
+<style src="/views/{{.EntityName}}/{{.EntityName}}.css?x={{.NoCache}}" type="text/css"></style>
 
 <div class="directions">
     Rows are added and subtracted automatically.
 </div>
+
+<br /></fieldset></form>
+{{ end }}
