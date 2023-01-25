@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 docker container stop todo_test
 docker rm todo_test
 docker container stop mysql
